@@ -11,7 +11,7 @@ cloudinary.config({
 const uploadAvatar = async (req, res) => {
   try {
     const { id } = req.user;
-
+console.log(id);
     // Retrieve the avatar URL from the request body
     const { avatar } = req.body;
     console.log(avatar);
