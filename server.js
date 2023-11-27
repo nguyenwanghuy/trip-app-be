@@ -14,7 +14,7 @@ const PORT = 8001;
 const whitelist = ['http://localhost:3000'];
 
 const corsOptions = {
-  origin: 'https://trip-app-frontend.vercel.app',
+  origin: ['https://trip-app-frontend.vercel.app', 'http://localhost:3000'],
   credentials: true,
 };
 //http server
