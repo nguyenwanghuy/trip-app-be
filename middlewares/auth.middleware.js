@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
 import PostModel from '../models/postModel.js';
+import UserModel from '../models/user.model.js';
 
  export const authMiddleware = (req, res, next) => {
     const token = req.headers["x-access-token"];
@@ -20,23 +21,33 @@ import PostModel from '../models/postModel.js';
       })
     }
   };
-  export const verifyTokenPost = (req, res, next) => {
-    authMiddleware(req, res,async() => {
-      const postId = req.params.id;
-      const post = await PostModel.findById(postId);
-      if (!post) {
-        return res.status(404).json({ message: 'Post not found' });
-      }
-      const postUserId = post.user;
-      
-      // console.log('req.user.id:', req.user.id);
-      // console.log('postUserId:', postUserId);
-      if (req.user.id === postUserId.toString() || req.user.admin) {
-        next();
-      } else {
-        return res.status(403).json({ message: 'You are not allowed to delete this post' });
-      }
-    });
+  export const verifyTokenPost = async (req, res, next) => {
+    try {
+      await authMiddleware(req, res, async () => {
+        const postId = req.params.id;
+        const post = await PostModel.findById(postId);
+        if (!post) {
+          return res.status(404).json({ message: 'Post not found' });
+        }
+        const postUserId = post.user.toString(); 
+        
+        // console.log('req.user.id:', req.user.id);
+        // console.log('postUserId:', postUserId);
+        
+        const user = await UserModel.findById(req.user.id);
+        if (!user) {
+          return res.status(404).json({ message: 'User not found' });
+        }
+        
+        if (req.user.id === postUserId || user.admin === true) {
+          next();
+        } else {
+          return res.status(403).json({ message: 'You are not allowed to delete this post' });
+        }
+      });
+    } catch (error) {
+      return res.status(500).json({ message: 'Internal server error' });
+    }
   };
 
   export const verifyTokenUser = (req, res,next) => {
