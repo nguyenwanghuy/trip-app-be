@@ -1,8 +1,8 @@
 import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs';
-
 import PostModel from '../models/postModel.js';
 import UserModel from '../models/user.model.js';
+import Vacation from '../models/vacationModel.js';
 
 cloudinary.config({
   cloud_name: 'dmlc8hjzu',
@@ -48,56 +48,34 @@ const PostVisibility = {
 
 const createPost = async (req, res) => {
   try {
-    const {
-      content,
-      description,
-      image,
-      viewers,
-      visibility,
-      dateStart,
-      dateEnd,
-    } = req.body;
+    const { content, description, image, milestoneId } = req.body;
     const { id } = req.user;
+    console.log(req.body);
 
     const currentUser = await UserModel.findById(id).select('friends');
     if (!currentUser) {
       return res.status(400).json({ message: 'User not found' });
     }
 
-    let postViewers = [];
-
-    switch (visibility) {
-      case PostVisibility.PRIVATE:
-        postViewers = [id];
-        break;
-      case PostVisibility.PUBLIC:
-        const allUsers = await UserModel.find().select('_id');
-        postViewers = allUsers.map((user) => user._id);
-        break;
-      case PostVisibility.FRIENDS:
-        postViewers = [
-          id,
-          ...currentUser.friends.filter((friend) =>
-            viewers.includes(String(friend)),
-          ),
-        ];
-        break;
-      default:
-        throw new Error('Invalid visibility option');
-    }
-
     const newPost = new PostModel({
       content,
       description,
       image,
-      dateStart,
-      dateEnd,
       user: id,
-      viewers: postViewers,
-      visibility,
+      milestone: milestoneId,
     });
 
     await newPost.save();
+
+    const vacation = await Vacation.findOneAndUpdate(
+      { 'milestones._id': milestoneId },
+      { $push: { 'milestones.$.posts': newPost } },
+      { new: true },
+    );
+
+    if (!vacation) {
+      return res.status(404).json({ message: 'Milestone not found' });
+    }
 
     return res.status(201).json({
       data: newPost,
@@ -107,6 +85,58 @@ const createPost = async (req, res) => {
     return res.status(400).json({ message: error.message });
   }
 };
+
+const updatePost = async (req, res) => {
+  try {
+    const { id } = req.user;
+    console.log(id);
+    const { content, description, image } = req.body;
+
+    console.log(req.body);
+
+    const vacation = await Vacation.findOne({
+      'milestones.posts._id': req.params.id,
+    });
+
+    console.log(vacation);
+
+    if (!vacation) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    const milestone = vacation.milestones.find((milestone) =>
+      milestone.posts.some((post) => post._id == req.params.id),
+    );
+
+    if (!milestone) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    const post = milestone.posts.find((post) => post._id == req.params.id);
+
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    if (post.user.toString() !== id) {
+      return res.status(403).json({ message: 'Permission denied' });
+    }
+
+    post.content = content;
+    post.description = description;
+    post.image = image;
+
+    await vacation.save();
+
+    return res.status(200).json({
+      data: post,
+      message: 'Post updated successfully',
+    });
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
 // upload image
 const uploadsImage = async (req, res) => {
   try {
@@ -121,43 +151,22 @@ const uploadsImage = async (req, res) => {
           folder: 'SOCIALMEDIA',
         })
         .then((result) => {
-          // Xử lý kết quả từ Cloudinary
-          // console.log(result);
-          fs.unlinkSync(f.path); // Xóa tệp tạm thời sau khi đã tải lên thành công
+          fs.unlinkSync(f.path);
           return result;
         });
     });
     Promise.all(uploadPromises)
       .then((results) => {
         const imageUrl = results.map((result) => result.url);
-        // Xử lý kết quả từ Cloudinary
-        // console.log(results);
+
         return res
           .status(200)
           .json({ message: 'Upload successful', data: imageUrl });
       })
       .catch((error) => {
-        // Xử lý lỗi từ Cloudinary
         console.log(error);
         return res.status(400).json({ error: 'Upload failed' });
       });
-
-    // url-mongo
-    // const updatePost = await PostModel.findOneAndUpdate(
-    //   { _id: req.params.id },
-    //   {
-    //     content,
-    //     description,
-    //     image: imageUrl
-    //   },
-    //   {
-    //     new: true,
-    //   }
-    // )
-    // return res.json({
-    //   message: 'Uploading image successfully',
-    //   data: imageUrl
-    // })
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -183,41 +192,113 @@ const getPost = async (req, res) => {
 //delete post by id
 const deletePost = async (req, res) => {
   try {
-    const { id } = req.user;
-    const existingPost = await PostModel.findByIdAndDelete({
-      _id: req.params.id,
-      user: id,
-    });
+    const { id: userId } = req.user;
+    const postId = req.params.id;
+
+    // Find a vacation that contains the specified post ID in its milestones
+    const vacation = await Vacation.findOne({ 'milestones.posts': postId });
+
+    if (!vacation) {
+      return res.status(404).json({
+        message: 'Post not found in any vacation',
+      });
+    }
+
+    // Find the milestone containing the post
+    const milestone = vacation.milestones.find((milestone) =>
+      milestone.posts.includes(postId),
+    );
+
+    if (!milestone) {
+      return res.status(404).json({
+        message: 'Milestone containing the post not found',
+      });
+    }
+
+    // Check if the post is found in the milestone's posts array
+    const postFound = milestone.posts.includes(postId);
+
+    if (!postFound) {
+      return res.status(404).json({
+        message: 'Post not found in milestone',
+      });
+    }
+
+    // Remove the post from the milestone's posts array
+    milestone.posts = milestone.posts.filter(
+      (postIdInArray) => postIdInArray !== postId,
+    );
+
+    // Save the updated vacation
+    await vacation.save();
+
+    // Delete the post from the database by its ID
+    const deletedPost = await PostModel.findByIdAndDelete(postId);
+
+    if (!deletedPost) {
+      return res.status(404).json({
+        message: 'Post not found',
+      });
+    }
+
+    // Respond with success message and deleted post data
     res.json({
       message: 'Delete post successfully',
-      data: existingPost,
+      data: deletedPost,
     });
   } catch (error) {
-    res.status(400).json({
+    console.error(error);
+    res.status(500).json({
       message: 'Error while deleting',
+      error: error.message,
     });
   }
 };
+
 //like post
 const likePost = async (req, res) => {
   try {
-    const idPost = req.params.idPost;
+    const postId = req.params.idPost;
     const userId = req.user.id;
-    const post = await PostModel.findById(idPost);
+
+    const vacation = await Vacation.findOne({ 'milestones.posts._id': postId });
+
+    if (!vacation) {
+      return res.status(404).json({
+        message: 'Post not found',
+      });
+    }
+
+    const milestone = vacation.milestones.find((milestone) =>
+      milestone.posts.some((post) => post._id.equals(postId)),
+    );
+
+    if (!milestone) {
+      return res.status(404).json({
+        message: 'Post not found',
+      });
+    }
+
+    const post = milestone.posts.find((post) => post._id.equals(postId));
+
     if (!post) {
       return res.status(404).json({
         message: 'Post not found',
       });
     }
+
     const likedByUser = post.likes.includes(userId);
+
     if (likedByUser) {
-      post.likes.pop(userId);
+      post.likes.pull(userId);
     } else {
       post.likes.push(userId);
     }
-    const updatePost = await post.save();
+
+    await vacation.save();
+
     res.status(201).json({
-      data: updatePost,
+      data: post,
       message: 'Like or unlike successfully',
     });
   } catch (error) {
@@ -253,72 +334,6 @@ const checkViewFriend = async (req, res) => {
     data: newPost,
     message: 'Success',
   });
-};
-
-const updatePost = async (req, res) => {
-  try {
-    const { id } = req.user;
-    const {
-      content,
-      description,
-      image,
-      viewers,
-      visibility,
-      dateStart,
-      dateEnd,
-      location,
-    } = req.body;
-
-    const currentUser = await UserModel.findById(id).select('friends');
-
-    const oldPost = await PostModel.findByIdAndUpdate(req.params.id);
-
-    if (!oldPost) {
-      return res.status(404).json({ message: 'Post not found' });
-    }
-
-    let postViewers = [];
-
-    switch (visibility) {
-      case PostVisibility.PRIVATE:
-        postViewers = [id];
-        break;
-      case PostVisibility.PUBLIC:
-        const allUsers = await UserModel.find().select('_id');
-        postViewers = allUsers.map((user) => user._id);
-        break;
-      case PostVisibility.FRIENDS:
-        postViewers = [
-          id,
-          ...currentUser.friends.filter((friend) =>
-            viewers.includes(String(friend)),
-          ),
-        ];
-        break;
-      default:
-        throw new Error('Invalid visibility option');
-    }
-
-    oldPost.content = content;
-    oldPost.description = description;
-    oldPost.image = image;
-    oldPost.viewers = postViewers;
-    oldPost.visibility = visibility;
-    oldPost.dateStart = dateStart;
-    oldPost.dateEnd = dateEnd;
-    oldPost.location = location;
-
-    await oldPost.save();
-
-    return res.json({
-      success: true,
-      data: oldPost,
-      message: 'Update successful',
-    });
-  } catch (error) {
-    console.error('Error updating post:', error);
-    res.status(500).json({ error: error.message });
-  }
 };
 
 const getPostById = async (req, res) => {

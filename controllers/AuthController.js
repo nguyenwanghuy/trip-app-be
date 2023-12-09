@@ -65,7 +65,7 @@ const login = async (req, res) => {
 };
 
 const register = async (req, res) => {
-  const { fullname, email, username, password,isAdmin } = req.body;
+  const { fullname, email, username, password, isAdmin } = req.body;
   try {
     if (!fullname || !email || !username || !password) {
       return res.status(400).json({
