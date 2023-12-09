@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const PostSchema = new mongoose.Schema(
+const postSchema = new mongoose.Schema(
   {
     content: {
       type: String,
@@ -29,33 +29,11 @@ const PostSchema = new mongoose.Schema(
         ref: 'users',
       },
     ],
-    viewers: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'users',
-      },
-    ],
-    visibility: {
-      type: String,
-      enum: ['private', 'public', 'friends'],
-      default: 'public',
-    },
-    dateStart: {
-      type: String,
-    },
-    dateEnd: {
-      type: String,
-    },
-    location: {
-      type: String,
-    },
-    views: {
-      type: Number,
-      default: 0,
-    },
+    milestoneId: { type: mongoose.Schema.Types.ObjectId, ref: 'Milestone' },
   },
   { timestamps: true },
 );
 
-const PostModel = mongoose.model('posts', PostSchema);
+const PostModel = mongoose.model('posts', postSchema);
+
 export default PostModel;

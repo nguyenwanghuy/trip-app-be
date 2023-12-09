@@ -6,11 +6,13 @@ import commentRouter from './comment.route.js';
 import ReplyCmtRouter from './replyCmt.route.js';
 import testRouter from './test.js';
 import albumRouter from './album.route.js';
+import vacationRouter from './vacationRoute.js';
 
 const router = express.Router();
 
 router.use('/auth', authRouter);
 router.use('/user', userRouter);
+router.use('/vacation', vacationRouter);
 router.use('/post', postRouter);
 router.use('/comment', commentRouter);
 router.use('/replyCmt', ReplyCmtRouter);
