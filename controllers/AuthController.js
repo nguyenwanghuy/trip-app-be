@@ -35,7 +35,7 @@ const login = async (req, res) => {
       password: existingUser.password,
     };
     const token = jwt.sign(jwtPayload, process.env.SECRET_KEY, {
-      expiresIn: '7s',
+      expiresIn: '7h',
     });
     const refreshToken = jwt.sign(
       jwtPayload,
