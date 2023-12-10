@@ -2,6 +2,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs';
 import UserModel from '../models/user.model.js';
 import PostModel from '../models/postModel.js';
+import Vacation from '../models/vacationModel.js';
 
 cloudinary.config({
   cloud_name: 'dxsyy0ocl',
@@ -82,19 +83,25 @@ const addRemoveFriend = async (req, res) => {
 const searchUsers = async (req, res) => {
   try {
     const searchTerm = req.query.term?.toString();
+    const regexTerm = new RegExp(searchTerm, 'i'); // 'i' để tìm kiếm không phân biệt chữ hoa chữ thường
+
     const searchUsers = await UserModel.find({
-      username: { $regex: searchTerm },
+      username: { $regex: regexTerm },
     }).select('username avatar');
+
     if (!searchUsers)
       return res.status(404).json({ message: 'User not found' });
-    const searchContent = await PostModel.find({
-      content: { $regex: searchTerm },
+
+    const searchContent = await Vacation.find({
+      title: { $regex: regexTerm },
     }).populate({
       path: 'user',
       select: 'username avatar',
     });
+
     if (!searchContent)
       return res.status(404).json({ message: 'Post not found' });
+
     res.status(200).json({
       searchUsers: searchUsers,
       searchContent: searchContent,
@@ -103,7 +110,6 @@ const searchUsers = async (req, res) => {
     res.status(500).send({ message: error.message });
   }
 };
-
 const suggestUser = async (req, res) => {
   try {
     const { id } = req.user;

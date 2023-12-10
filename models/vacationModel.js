@@ -50,7 +50,7 @@ const vacationSchema = new Schema({
       ref: 'User',
     },
   ],
-});
+}, { timestamps: true },);
 
 const Vacation = mongoose.model('Vacation', vacationSchema);
 
