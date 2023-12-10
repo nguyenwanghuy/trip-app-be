@@ -33,7 +33,7 @@ io.on('connection', (socket) => {
   // friend request
   socket.on('friendReq', (req) => {
     socket.broadcast.emit('newFriend', req)
-    console.log(req);
+    // console.log(req);
   })
   //cmt
   socket.on('send_comment',(data)=>{
