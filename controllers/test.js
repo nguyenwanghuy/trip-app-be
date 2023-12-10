@@ -138,7 +138,6 @@ export const acceptRequest = async (req, res, next) => {
       { _id: rid },
       { requestStatus: status },
     );
-
     if (status === 'Accepted') {
       const user = await UserModel.findById(id);
 

@@ -228,19 +228,23 @@ const updateVacation = async (req, res) => {
       title,
       description,
       participants,
-      viewers,
+      viewers: rawViewers,
       visibility,
       startDate,
       endDate,
       location,
     } = req.body;
 
+    const viewers = Array.isArray(rawViewers) ? rawViewers : [];
+
     const currentUser = await UserModel.findById(id).select('friends');
 
     const oldVacation = await Vacation.findByIdAndUpdate(req.params.id);
 
     if (!oldVacation) {
-      return res.status(404).json({ message: 'vacation not found' });
+      return res
+        .status(404)
+        .json({ success: false, message: 'Vacation not found' });
     }
 
     let vacationViewers = [];
@@ -256,7 +260,7 @@ const updateVacation = async (req, res) => {
       case VacationVisibility.FRIENDS:
         vacationViewers = [
           id,
-          ...currentUser.friends.filter((friend) =>
+          ...(currentUser.friends || []).filter((friend) =>
             viewers.includes(String(friend)),
           ),
         ];

@@ -35,7 +35,7 @@ const login = async (req, res) => {
       password: existingUser.password,
     };
     const token = jwt.sign(jwtPayload, process.env.SECRET_KEY, {
-      expiresIn: '7d',
+      expiresIn: '7s',
     });
     const refreshToken = jwt.sign(
       jwtPayload,
@@ -223,7 +223,7 @@ const requestRefreshToken = async (req, res) => {
           await refreshTokenEntry.save();
 
           res.status(200).json({
-            accessToken: newAccessToken,
+            token: newAccessToken,
           });
         } catch (error) {
           console.log(error);
