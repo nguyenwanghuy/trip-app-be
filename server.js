@@ -30,7 +30,16 @@ io.on('connection', (socket) => {
     // console.log(data);
     io.emit('like', data);
   });
-  
+  // friend request
+  socket.on('friendReq', (req) => {
+    socket.broadcast.emit('newFriend', req);
+    console.log(req);
+  });
+  //cmt
+  socket.on('send_comment', (data) => {
+    socket.broadcast.emit('receive_comment', data);
+    console.log(data);
+  });
   //disconnect
   socket.on('disconnect', () => {
     // console.log('client disconnected')

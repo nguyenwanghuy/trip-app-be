@@ -195,8 +195,9 @@ const deletePost = async (req, res) => {
     const { id: userId } = req.user;
     const postId = req.params.id;
 
-    // Find a vacation that contains the specified post ID in its milestones
-    const vacation = await Vacation.findOne({ 'milestones.posts': postId });
+    const vacation = await Vacation.findOne({
+      'milestones.posts': postObjectId,
+    });
 
     if (!vacation) {
       return res.status(404).json({
@@ -206,7 +207,7 @@ const deletePost = async (req, res) => {
 
     // Find the milestone containing the post
     const milestone = vacation.milestones.find((milestone) =>
-      milestone.posts.includes(postId),
+      milestone.posts.some((post) => post.equals(postObjectId)),
     );
 
     if (!milestone) {
@@ -215,40 +216,18 @@ const deletePost = async (req, res) => {
       });
     }
 
-    // Check if the post is found in the milestone's posts array
-    const postFound = milestone.posts.includes(postId);
+    // Update the milestone by removing the post
+    milestone.posts.pull(postObjectId);
 
-    if (!postFound) {
-      return res.status(404).json({
-        message: 'Post not found in milestone',
-      });
-    }
-
-    // Remove the post from the milestone's posts array
-    milestone.posts = milestone.posts.filter(
-      (postIdInArray) => postIdInArray !== postId,
-    );
-
-    // Save the updated vacation
+    // Save the updated vacation document
     await vacation.save();
 
-    // Delete the post from the database by its ID
-    const deletedPost = await PostModel.findByIdAndDelete(postId);
-
-    if (!deletedPost) {
-      return res.status(404).json({
-        message: 'Post not found',
-      });
-    }
-
-    // Respond with success message and deleted post data
-    res.json({
-      message: 'Delete post successfully',
-      data: deletedPost,
+    return res.status(200).json({
+      message: 'Post deleted successfully',
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    return res.status(500).json({
       message: 'Error while deleting',
       error: error.message,
     });
