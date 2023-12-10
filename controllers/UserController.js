@@ -12,7 +12,7 @@ cloudinary.config({
 const uploadAvatar = async (req, res) => {
   try {
     const { id } = req.user;
-console.log(id);
+    console.log(id);
     // Retrieve the avatar URL from the request body
     const { avatar } = req.body;
     console.log(avatar);
@@ -83,8 +83,7 @@ const addRemoveFriend = async (req, res) => {
 const searchUsers = async (req, res) => {
   try {
     const searchTerm = req.query.term?.toString();
-    const regexTerm = new RegExp(searchTerm, 'i'); // 'i' để tìm kiếm không phân biệt chữ hoa chữ thường
-
+    const regexTerm = new RegExp(searchTerm, 'i');
     const searchUsers = await UserModel.find({
       username: { $regex: regexTerm },
     }).select('username avatar');

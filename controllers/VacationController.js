@@ -194,6 +194,7 @@ const deleteVacation = async (req, res) => {
 const likeVacation = async (req, res) => {
   try {
     const idVacation = req.params.idVacation;
+    console.log(idVacation);
     const userId = req.user.id;
     const vacation = await Vacation.findById(idVacation);
     if (!vacation) {
@@ -227,19 +228,23 @@ const updateVacation = async (req, res) => {
       title,
       description,
       participants,
-      viewers,
+      viewers: rawViewers,
       visibility,
       startDate,
       endDate,
       location,
     } = req.body;
 
+    const viewers = Array.isArray(rawViewers) ? rawViewers : [];
+
     const currentUser = await UserModel.findById(id).select('friends');
 
     const oldVacation = await Vacation.findByIdAndUpdate(req.params.id);
 
     if (!oldVacation) {
-      return res.status(404).json({ message: 'vacation not found' });
+      return res
+        .status(404)
+        .json({ success: false, message: 'Vacation not found' });
     }
 
     let vacationViewers = [];
@@ -255,7 +260,7 @@ const updateVacation = async (req, res) => {
       case VacationVisibility.FRIENDS:
         vacationViewers = [
           id,
-          ...currentUser.friends.filter((friend) =>
+          ...(currentUser.friends || []).filter((friend) =>
             viewers.includes(String(friend)),
           ),
         ];
@@ -332,6 +337,75 @@ const viewCountVacation = async (req, res) => {
   }
 };
 
+const addMilestone = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date, description } = req.body;
+
+    const vacation = await Vacation.findById(id);
+
+    if (!vacation) {
+      return res.status(404).json({
+        message: 'Vacation not found',
+      });
+    }
+
+    const newMilestone = {
+      date,
+      description,
+      posts: [],
+    };
+
+    vacation.milestones.push(newMilestone);
+    await vacation.save();
+
+    res.status(201).json({
+      data: vacation,
+      message: 'Milestone added successfully',
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+const deleteMilestone = async (req, res) => {
+  try {
+    const { id, milestoneId } = req.params;
+
+    const vacation = await Vacation.findById(id);
+
+    if (!vacation) {
+      return res.status(404).json({
+        message: 'Vacation not found',
+      });
+    }
+
+    const milestoneIndex = vacation.milestones.findIndex(
+      (milestone) => milestone._id.toString() === milestoneId,
+    );
+
+    if (milestoneIndex === -1) {
+      return res.status(404).json({
+        message: 'Milestone not found',
+      });
+    }
+
+    vacation.milestones.splice(milestoneIndex, 1);
+    await vacation.save();
+
+    res.json({
+      data: vacation,
+      message: 'Milestone deleted successfully',
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
 const VacationCtrl = {
   getAllVacations,
   createVacation,
@@ -342,6 +416,8 @@ const VacationCtrl = {
   likeVacation,
   getVacationsById,
   viewCountVacation,
+  addMilestone,
+  deleteMilestone,
 };
 
 export default VacationCtrl;
