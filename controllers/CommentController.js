@@ -1,5 +1,6 @@
 import CommentModel from '../models/commentModel.js';
 import PostModel from '../models/postModel.js';
+import UserModel from '../models/user.model.js';
 
 const createComment = async (req, res) => {
   try {
@@ -10,12 +11,13 @@ const createComment = async (req, res) => {
     if (!description || !post || !id) {
       return res.json({ message: 'Missing data' });
     }
-
+    const avatarUser = await UserModel.findById(id)
     const newComment = new CommentModel({
       description: description,
       post: post,
       user: id,
       from,
+      avatar: avatarUser.avatar,
     });
 
     await newComment.save();

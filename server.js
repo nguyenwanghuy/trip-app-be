@@ -38,7 +38,7 @@ io.on('connection', (socket) => {
   //cmt
   socket.on('send_comment', (data) => {
     socket.broadcast.emit('receive_comment', data);
-    console.log(data);
+    // console.log(data);
   });
   //disconnect
   socket.on('disconnect', () => {
