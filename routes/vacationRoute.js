@@ -4,7 +4,7 @@ import {
   verifyTokenPost,
 } from '../middlewares/auth.middleware.js';
 import uploadFile from '../configs/upload.multer.js';
-import VacationCtrl from '../controllers/vacationController.js';
+import VacationCtrl from '../controllers/VacationController.js';
 
 const router = express.Router();
 router.use(authMiddleware);
