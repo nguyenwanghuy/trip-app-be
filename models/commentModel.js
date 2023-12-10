@@ -6,6 +6,7 @@ const CommentSchema = new mongoose.Schema(
     post: { type: Schema.Types.ObjectId, ref: 'posts' },
     description: { type: String, required: true },
     from: { type: String, required: true },
+    avatar: { type: String },
     replies: [
       {
         rid: { type: mongoose.Schema.Types.ObjectId },
